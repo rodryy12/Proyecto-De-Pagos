@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Producto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .form-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], input[type="url"], textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            resize: none;
+            height: 100px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Crear Producto</h1>
+        <form action="/create-product" method="POST">
+            <label for="productName">Nombre del Producto:</label>
+            <input type="text" name="productName" id="productName" required><br>
+
+            <label for="price">Precio:</label>
+            <input type="number" name="price" id="price" required><br>
+
+            <label for="redirectLink">Enlace de Redirección (opcional):</label>
+            <input type="url" name="redirectLink" id="redirectLink"><br>
+
+            <label for="description">Descripción (opcional):</label>
+            <textarea name="description" id="description"></textarea><br>
+
+            <button type="submit">Crear Producto</button>
+        </form>
+    </div>
+    <div id="paypal-button-container"></div>
+    <script src="https://www.paypal.com/sdk/js?client-id=AQAFDhvfrGl8TZW9xgi00BYsdoBS88HKGAuPC9pN6rHzhRgmrq7lO0_qYXLILmRWbmYjAt5MuWTUf0YZ"></script>
+    <script>
+        function setupPayPalButton(price, productName) {
+            paypal.Buttons({
+                createOrder: function(data, actions) {
+                    return fetch('/create-payment', {
+                        method: 'post',
+                        headers: {
+                            'content-type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            price: price,
+                            productName: productName
+                        })
+                    }).then(function(res) {
+                        return res.json();
+                    }).then(function(data) {
+                        return actions.order.create({
+                            purchase_units: [{
+                                amount: {
+                                    currency_code: 'USD',
+                                    value: price
+                                }
+                            }]
+                        });
+                    });
+                },
+                onApprove: function(data, actions) {
+                    return fetch('/capture-payment', {
+                        method: 'post',
+                        headers: {
+                            'content-type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            orderID: data.orderID
+                        })
+                    }).then(function(res) {
+                        return res.json();
+                    }).then(function(data) {
+                        alert('Pago realizado con éxito');
+                        window.location.href = '/success'; // Redirigir a la página de éxito
+                    });
+                },
+                onError: function(err) {
+                    console.error(err);
+                    alert('Error al procesar el pago');
+                }
+            }).render('#paypal-button-container');
+        }
+
+        // Obtener los valores de los campos del formulario y configurar el botón de PayPal
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const price = document.getElementById('price').value;
+                const productName = document.getElementById('productName').value;
+                setupPayPalButton(price, productName);
+            });
+        });
+    </script>
+</body>
+</html>
