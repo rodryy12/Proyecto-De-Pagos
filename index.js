@@ -2,9 +2,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const paypal = require('@paypal/checkout-server-sdk');
+require('dotenv').config(); // Asegúrate de que dotenv está cargado
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Configurar EJS como el motor de plantillas
 app.set('view engine', 'ejs');
@@ -18,8 +19,8 @@ app.use(express.static(path.join(__dirname, 'public'))); // Para servir archivos
 // Configuración de PayPal
 function configurePayPalEnvironment() {
   return new paypal.core.SandboxEnvironment(
-    'AQAFDhvfrGl8TZW9xgi00BYsdoBS88HKGAuPC9pN6rHzhRgmrq7lO0_qYXLILmRWbmYjAt5MuWTUf0YZ', // Client ID
-    'EJnT-4h8WkHTOxEBSMGVe3M8_JOxXHe3RjWRltNE8vuiz1iQn7LRff1cqf1D3yE6xeDwVhxqSQTaynQ'  // Secret Key
+    process.env.PAYPAL_CLIENT_ID, // Client ID desde .env
+    process.env.PAYPAL_SECRET_KEY // Secret Key desde .env
   );
 }
 const payPalClient = new paypal.core.PayPalHttpClient(configurePayPalEnvironment());
@@ -69,8 +70,8 @@ app.post('/create-payment', async (req, res) => {
       description: req.body.productName, // Nombre del producto
     }],
     application_context: {
-      return_url: 'http://localhost:3000/success', // URL de éxito
-      cancel_url: 'http://localhost:3000/cancel',   // URL de cancelación
+      return_url: `${process.env.RENDER_URL}/success`, // URL de éxito desde .env
+      cancel_url: `${process.env.RENDER_URL}/cancel`,   // URL de cancelación desde .env
     },
   });
 
