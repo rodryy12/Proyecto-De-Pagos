@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
+const paypal = require('@paypal/checkout-server-sdk');
 
 const app = express();
 const port = 3000;
@@ -13,6 +14,15 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Para servir archivos estáticos
+
+// Configuración de PayPal
+function configurePayPalEnvironment() {
+  return new paypal.core.SandboxEnvironment(
+    'AQAFDhvfrGl8TZW9xgi00BYsdoBS88HKGAuPC9pN6rHzhRgmrq7lO0_qYXLILmRWbmYjAt5MuWTUf0YZ', // Client ID
+    'EJnT-4h8WkHTOxEBSMGVe3M8_JOxXHe3RjWRltNE8vuiz1iQn7LRff1cqf1D3yE6xeDwVhxqSQTaynQ'  // Secret Key
+  );
+}
+const payPalClient = new paypal.core.PayPalHttpClient(configurePayPalEnvironment());
 
 // Ruta básica para comprobar que el servidor funciona
 app.get('/', (req, res) => {
@@ -45,16 +55,48 @@ app.post('/create-product', (req, res) => {
   res.redirect('/'); // Redirige a la página principal después de crear el producto
 });
 
+// Ruta para crear el pago con PayPal
+app.post('/create-payment', async (req, res) => {
+  const request = new paypal.orders.OrdersCreateRequest();
+  request.prefer('return=representation');
+  request.requestBody({
+    intent: 'CAPTURE',
+    purchase_units: [{
+      amount: {
+        currency_code: 'USD',
+        value: req.body.price, // Precio del producto
+      },
+      description: req.body.productName, // Nombre del producto
+    }],
+    application_context: {
+      return_url: 'http://localhost:3000/success', // URL de éxito
+      cancel_url: 'http://localhost:3000/cancel',   // URL de cancelación
+    },
+  });
+
+  try {
+    const order = await payPalClient.execute(request);
+    res.json({ id: order.result.id });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error al crear el pago');
+  }
+});
+
+// Ruta para capturar el pago con PayPal
+app.post('/capture-payment', async (req, res) => {
+  const request = new paypal.orders.OrdersCaptureRequest(req.body.orderID);
+  request.requestBody({});
+  try {
+    const capture = await payPalClient.execute(request);
+    res.json(capture.result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error al capturar el pago');
+  }
+});
+
 // Iniciar el servidor
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
-const paypal = require('@paypal/checkout-server-sdk');
-
-// Configuración de PayPal
-function configurePayPalEnvironment() {
-  return new paypal.core.SandboxEnvironment('AQAFDhvfrGl8TZW9xgi00BYsdoBS88HKGAuPC9pN6rHzhRgmrq7lO0_qYXLILmRWbmYjAt5MuWTUf0YZ', 'EJnT-4h8WkHTOxEBSMGVe3M8_JOxXHe3RjWRltNE8vuiz1iQn7LRff1cqf1D3yE6xeDwVhxqSQTaynQ-
-');
-}
-
-const payPalClient = new paypal.core.PayPalHttpClient(configurePayPalEnvironment());
