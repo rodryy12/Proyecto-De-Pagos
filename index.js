@@ -5,7 +5,7 @@ const paypal = require('@paypal/checkout-server-sdk');
 require('dotenv').config(); // Asegúrate de que dotenv está cargado
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000; // Usar el puerto proporcionado por Render
 
 // Configurar EJS como el motor de plantillas
 app.set('view engine', 'ejs');
